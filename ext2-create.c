@@ -286,7 +286,8 @@ void write_block_bitmap(int fd)
 	u8 map_value[BLOCK_SIZE] = {0};
 	map_value[0] = 0b11111111; // Blocks 0-7
 	map_value[1] = 0b11111111; // Blocks 8-15
-	map_value[2] = 0b11111111; // Blocks 16-23
+	map_value[2] = 0b01111111; // Blocks 16-23
+	map_value[127] = 0b10000000; // padding at end of bitmap
 
 	for (int i = 128; i < BLOCK_SIZE; i++) {
 		map_value[i] = 0b11111111; // Block 1024+
@@ -394,7 +395,7 @@ void write_inode_table(int fd) {
 								| EXT2_S_IRGRP
 								| EXT2_S_IROTH;
 	hello_world_inode.i_uid = 0;
-	hello_world_inode.i_size = 13; // "Hello, world!\n"
+	hello_world_inode.i_size = 12; // "Hello world\n"
 	hello_world_inode.i_atime = current_time;
 	hello_world_inode.i_ctime = current_time;
 	hello_world_inode.i_mtime = current_time;
@@ -502,7 +503,7 @@ void write_hello_world_file_block(int fd)
 		errno_exit("lseek");
 	}
 
-	const char *text = "Hello, world!\n";
+	const char *text = "Hello world\n";
 	size_t len = strlen(text);
 
 	if (write(fd, text, len) != (ssize_t) len) {
