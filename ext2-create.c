@@ -206,8 +206,8 @@ void write_superblock(int fd) {
 	superblock.s_first_data_block = 1; /* First Data Block */
 	superblock.s_log_block_size = 0;					/* 1024 */
 	superblock.s_log_frag_size = 0;						/* 1024 */
-	superblock.s_blocks_per_group = NUM_BLOCKS;
-	superblock.s_frags_per_group = NUM_BLOCKS; // frags?
+	superblock.s_blocks_per_group = BLOCK_SIZE * 8;
+	superblock.s_frags_per_group = BLOCK_SIZE * 8; // frags?
 	superblock.s_inodes_per_group = NUM_INODES;
 	superblock.s_mtime = 0;				/* Mount time */
 	superblock.s_wtime = current_time;	/* Write time */
@@ -218,14 +218,12 @@ void write_superblock(int fd) {
 	superblock.s_errors            = 1; /* Ignore the error (continue on) */
 	superblock.s_minor_rev_level   = 0; /* Leave this as 0 */
 	superblock.s_lastcheck = current_time; /* Last check time */
-	superblock.s_checkinterval     = 0; /* Force checks by making them every 1 second */
+	superblock.s_checkinterval     = 1; /* Force checks by making them every 1 second */
 	superblock.s_creator_os        = 0; /* Linux */
 	superblock.s_rev_level         = 0; /* Leave this as 0 */
 	superblock.s_def_resuid        = 0; /* root */
 	superblock.s_def_resgid        = 0; /* root */
 
-	/* You can leave everything below this line the same, delete this
-	   comment when you're doneNUM_FREE_INODES the lab */
 	superblock.s_uuid[0] = 0x5A;
 	superblock.s_uuid[1] = 0x1E;
 	superblock.s_uuid[2] = 0xAB;
@@ -284,12 +282,11 @@ void write_block_bitmap(int fd)
 
 	// TODO It's all yours
 	u8 map_value[BLOCK_SIZE] = {0};
-	map_value[0] = 0b11111111; // Blocks 0-7
-	map_value[1] = 0b11111111; // Blocks 8-15
-	map_value[2] = 0b01111111; // Blocks 16-23
+	for (int i = 0; i < LAST_BLOCK; i++) {
+		map_value[i / 8] |= (1 << (i % 8));
+	}
 	map_value[127] = 0b10000000; // padding at end of bitmap
-
-	for (int i = 128; i < BLOCK_SIZE; i++) {
+	for (int i = NUM_BLOCKS/8; i < BLOCK_SIZE; i++) {
 		map_value[i] = 0b11111111; // Block 1024+
 	}
 
@@ -309,15 +306,14 @@ void write_inode_bitmap(int fd)
 
 	// TODO It's all yours
 	u8 map_value[BLOCK_SIZE] = {0};
-	map_value[0] = 0b11111111; // Inodes 1-8
-	map_value[1] = 0b00011111; // Inodes 9-16 (14, 15, 16 are free)
+	for (int i = 0; i < LAST_INO; i++) {
+		map_value[i / 8] |= (1 << (i % 8));
+	}
 
-	for (int i = 16; i < BLOCK_SIZE; i++) {
+	for (int i = NUM_INODES/8; i < BLOCK_SIZE; i++) {
 		map_value[i] = 0b11111111; // Inodes 129+
 	}
 	
-
-
 	if (write(fd, map_value, BLOCK_SIZE) != BLOCK_SIZE)
 	{
 		errno_exit("write");
